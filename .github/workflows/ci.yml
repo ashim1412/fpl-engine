@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+
+      - name: Lint SQL (sqlfluff)
+        run: uv run sqlfluff lint .
+
+      - name: Test (pytest)
+        run: uv run pytest
+
+      # Phase 2+: build the dbt project into an ephemeral schema.
+      # - name: dbt build
+      #   run: uv run dbt build
+
+      # Phase 2+: validate the Dagster definitions load cleanly.
+      # - name: Validate Dagster definitions
+      #   run: uv run dagster definitions validate -m fpl_engine.definitions
