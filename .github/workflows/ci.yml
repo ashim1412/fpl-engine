@@ -8,6 +8,29 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fpl
+          POSTGRES_PASSWORD: fpl
+          POSTGRES_DB: fpl_engine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U fpl"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://fpl:fpl@localhost:5432/fpl_engine
+      DAGSTER_PG_USERNAME: fpl
+      DAGSTER_PG_PASSWORD: fpl
+      DAGSTER_PG_HOST: localhost
+      DAGSTER_PG_DB: dagster
+
     steps:
       - uses: actions/checkout@v4
 
@@ -31,13 +54,18 @@ jobs:
       - name: Lint SQL (sqlfluff)
         run: uv run sqlfluff lint .
 
+      - name: Create Dagster storage database
+        run: PGPASSWORD=fpl psql -h localhost -U fpl -d fpl_engine -c "CREATE DATABASE dagster;"
+
+      - name: Apply migrations
+        run: uv run fpl-migrate
+
       - name: Test (pytest)
         run: uv run pytest
+
+      - name: Validate Dagster definitions
+        run: uv run dagster definitions validate -m fpl_engine.definitions
 
       # Phase 2+: build the dbt project into an ephemeral schema.
       # - name: dbt build
       #   run: uv run dbt build
-
-      # Phase 2+: validate the Dagster definitions load cleanly.
-      # - name: Validate Dagster definitions
-      #   run: uv run dagster definitions validate -m fpl_engine.definitions

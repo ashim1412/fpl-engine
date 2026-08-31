@@ -3,7 +3,7 @@
 Personal FPL suggestion engine. Full context lives in:
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — stack, data flow, warehouse schemas, Dagster assets
-- [ROADMAP.md](ROADMAP.md) — phases and their done-when gates (**currently: Phase 0 complete**)
+- [ROADMAP.md](ROADMAP.md) — phases and their done-when gates (**currently: Phase 1 complete**)
 - [CONTRIBUTING.md](CONTRIBUTING.md) — branching, commit style, PR/CI requirements
 - [docs/adr/0001-architecture-and-stack.md](docs/adr/0001-architecture-and-stack.md) — why this stack
 
@@ -14,6 +14,7 @@ uv sync                  # install deps from uv.lock
 pre-commit install       # wire up ruff + sqlfluff on commit
 cp .env.example .env      # fill in local values
 docker compose up -d      # Postgres + Dagster webserver/daemon/code
+uv run fpl-migrate        # apply migrations/*.sql to the raw schema
 ```
 
 Dagster UI: http://localhost:3000
@@ -30,7 +31,10 @@ Dagster UI: http://localhost:3000
 
 ## Current phase
 
-Phase 0 (scaffold) is done: empty package, config, Dagster `Definitions` with a
-trivial asset, Docker Compose, CI. No FPL/domain logic exists yet — that starts
-in Phase 1 (ingestion). Don't add loaders, dbt models, scoring, or Telegram code
-without checking ROADMAP.md for which phase it belongs to.
+Phase 1 (ingestion) is done: an `httpx`+`tenacity` FPL API client, `pydantic`
+payload contracts, EL-only loaders that upsert reference tables and append
+`raw.snapshots`, SQL migrations (applied via `yoyo`, no ORM), and Dagster
+`raw_fpl_*` assets + `daily_ingest_job` + a pre-deadline sensor. Still no
+transformation logic (no renaming/cleaning/joins) — that's Phase 2 (dbt).
+Don't add dbt models, scoring, or Telegram code without checking ROADMAP.md
+for which phase it belongs to.
