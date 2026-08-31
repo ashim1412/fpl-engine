@@ -1,0 +1,5 @@
+[sqlfluff]
+dialect = postgres
+templater = raw
+# Switch templater to dbt once the dbt project lands in Phase 2:
+# templater = dbt
