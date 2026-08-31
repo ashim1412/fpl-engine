@@ -3,3 +3,6 @@ dialect = postgres
 templater = raw
 # Switch templater to dbt once the dbt project lands in Phase 2:
 # templater = dbt
+# name/source/position are ordinary, non-reserved Postgres identifiers used
+# throughout our lineage columns and natural keys — too common to flag.
+exclude_rules = references.keywords
