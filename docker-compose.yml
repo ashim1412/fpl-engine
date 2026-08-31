@@ -1,0 +1,71 @@
+x-dagster-env: &dagster-env
+  DAGSTER_HOME: /app/dagster_home
+  DAGSTER_PG_USERNAME: ${POSTGRES_USER:-fpl}
+  DAGSTER_PG_PASSWORD: ${POSTGRES_PASSWORD:-fpl}
+  DAGSTER_PG_HOST: postgres
+  DAGSTER_PG_DB: ${POSTGRES_DB:-fpl_engine}
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fpl}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fpl}
+      POSTGRES_DB: ${POSTGRES_DB:-fpl_engine}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fpl}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dagster-code:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "fpl_engine.definitions"]
+    environment:
+      <<: *dagster-env
+    expose:
+      - "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "workspace.yaml"]
+    environment:
+      <<: *dagster-env
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./workspace.yaml:/app/workspace.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dagster-code:
+        condition: service_started
+
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: ["dagster-daemon", "run"]
+    environment:
+      <<: *dagster-env
+    volumes:
+      - ./workspace.yaml:/app/workspace.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dagster-code:
+        condition: service_started
+
+volumes:
+  pgdata:
